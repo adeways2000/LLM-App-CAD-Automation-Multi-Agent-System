@@ -9,6 +9,13 @@ The system follows a hierarchical multi-agent architecture using LangGraph, with
 
 
 
+## System Requirements
+
+- Python 3.8 or higher
+- 4GB RAM minimum (8GB recommended)
+- Internet connection for API access
+- Modern web browser for UI access
+
 ## Installation and Setup
 
 ### Prerequisites
@@ -26,8 +33,8 @@ The system follows a hierarchical multi-agent architecture using LangGraph, with
 
 2. Create a virtual environment:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   conda create -n your_venv_name python=3.11 -y
+   conda activate your_venv_name
    ```
 
 3. Install dependencies:
