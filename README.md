@@ -3,6 +3,9 @@
 
 The system follows a hierarchical multi-agent architecture using LangGraph, with a central coordinator agent managing specialized agents for different aspects of the CAD workflow:
 
+![image](https://github.com/user-attachments/assets/a8e31b69-11c3-4adc-ad7e-5a4204e595d2)
+
+
 
 
 
