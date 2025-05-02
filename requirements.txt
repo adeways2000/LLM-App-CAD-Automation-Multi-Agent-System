@@ -1,0 +1,29 @@
+# Requirements for CAD Automation Multi-Agent System
+
+# This file lists all the dependencies required to run the LLM-powered CAD automation workflow application.
+
+## Python Dependencies
+
+# Core dependencies
+langchain>=0.1.14
+langgraph>=0.0.30
+langchain-openai>=0.1.4
+langchain-community>=0.0.29
+
+# UI dependencies
+streamlit==1.35.0
+streamlit-chat==0.1.1
+
+# API and integration
+requests==2.32.3
+python-dotenv>=1.0.0
+
+# Testing
+pytest==8.2.2
+
+# Utilities
+pydantic==2.7.1
+typing-extensions>=4.5.0
+
+# Python version classifier
+python_requires>=3.11
