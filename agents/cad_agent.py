@@ -2,16 +2,15 @@
 CAD Agent for Company CAD Automation Multi-Agent System
 
 This module implements the CAD Agent that handles direct interactions with CAD systems
-through Company's CAD connectors, translating high-level design instructions into
-specific CAD operations.
+through Company's CAD connectors, including visualization capabilities.
 """
 import os
-from typing import Dict, List, Any, TypedDict, Optional
+import json
+from typing import Dict, List, Any, TypedDict
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
-import json
+import streamlit as st
 
-# Define the state structure for CAD operations
 class CADOperation(TypedDict):
     operation_type: str  # create, modify, delete
     element_type: str  # point, line, curve, surface, solid, etc.
@@ -20,187 +19,211 @@ class CADOperation(TypedDict):
 
 class CADAgent:
     """
-    CAD Agent that handles direct interactions with CAD systems through
-    Company's CAD connectors.
+    CAD Agent handling CAD operations and visualization.
     """
     
     def __init__(self, llm: ChatOpenAI = None):
-        """
-        Initialize the CAD Agent.
-        
-        Args:
-            model_name: The name of the LLM model to use
-        """
-        if llm is None:
-            self.llm = ChatOpenAI(
-                model="gpt-4",
-                temperature=0.5,
-                openai_api_key=os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
-            )
-        else:
-            self.llm = llm
-        # In a real implementation, this would connect to Company's CAD connectors
-        self.Company_connector = self._mock_Company_connector()
-    
-    def _create_prompt(self) -> ChatPromptTemplate:
-        """
-        Create the prompt template for the CAD Agent.
-        
-        Returns:
-            ChatPromptTemplate: The prompt template
-        """
-        return ChatPromptTemplate.from_template("""
-        You are the CAD Agent in a CAD automation system for Company GmbH.
-        Your role is to translate high-level design instructions into specific CAD operations
-        and execute them through Company's CAD connectors.
+        self.llm = llm or self._default_llm()
+        self.connector = self._init_connector()
+        self.visualizer = self._init_visualizer()
+        self.chain = self._create_prompt() | self.llm
 
-        Task: {task}
-        Current CAD Model State: {cad_model_state}
-        Design Constraints: {design_constraints}
+    def _default_llm(self):
+        return ChatOpenAI(
+            model="gpt-4",
+            temperature=0.5,
+            openai_api_key=os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
+        )
 
-        Available CAD Operations:
-        1. Create: Generate new geometric elements
-        2. Modify: Change existing geometric elements
-        3. Delete: Remove geometric elements
-        4. Measure: Calculate properties of geometric elements
-        5. Transform: Apply transformations to geometric elements
-
-        Determine the specific CAD operations needed to accomplish this task.
-        For each operation, specify:
-        1. The CAD operation type (create, modify, delete, measure, transform)
-        2. The geometric elements involved (point, line, curve, surface, solid, etc.)
-        3. The parameters and values
-        4. The expected outcome
-
-        Provide your reasoning and the detailed CAD operations to perform in the following JSON format:
-        ```json
-        {
-            "reasoning": "Your detailed reasoning here",
-            "operations": [
-                {
-                    "operation_type": "create|modify|delete|measure|transform",
-                    "element_type": "point|line|curve|surface|solid|etc",
-                    "parameters": {
-                        "param1": "value1",
-                        "param2": "value2"
-                    },
-                    "expected_outcome": "Description of expected result"
+    def _init_connector(self):
+        """Initialize CAD system connector with UI-friendly formatting"""
+        class MockCADConnector:
+            def execute(self, operation: CADOperation):
+                # Format operation for UI compatibility
+                formatted_op = {
+                    "type": operation["operation_type"],
+                    "element": operation["element_type"],
+                    "parameters": operation["parameters"]
                 }
-            ],
-            "completion_status": "complete|partial|failed",
-            "next_steps": "Description of any follow-up steps needed"
-        }
-        ```
-        """)
-    
-    def _mock_Company_connector(self):
-        """
-        Create a mock Company CAD connector for development purposes.
-        In a real implementation, this would be replaced with actual API calls.
-        
-        Returns:
-            A mock connector object
-        """
-        class MockCompanyConnector:
-            def execute_operation(self, operation):
-                # Simulate successful operation
                 return {
                     "status": "success",
-                    "operation": operation,
-                    "result": f"Simulated execution of {operation['operation_type']} on {operation['element_type']}"
+                    "operation": formatted_op,
+                    "visualization": self._generate_visualization(operation),
+                    "metadata": {"execution_time": 0.5}
                 }
             
-            def get_current_state(self):
-                # Return a mock CAD model state
-                return {
-                    "model_id": "mock-model-123",
-                    "elements": {
-                        "points": 10,
-                        "lines": 15,
-                        "surfaces": 5,
-                        "solids": 2
-                    },
-                    "parameters": {
-                        "units": "mm",
-                        "tolerance": 0.01
-                    },
-                    "visualization_url": "https://example.com/mock-visualization.png"
-                }
+            def _generate_visualization(self, operation: CADOperation):
+                op_type = operation["operation_type"]
+                element = operation["element_type"]
+                return (
+                    f"https://cad-visualization.example.com/"
+                    f"{op_type}-{element}-{hash(json.dumps(operation))}.png"
+                )
         
-        return MockCompanyConnector()
-    
+        return MockCADConnector()
+
+    def _init_visualizer(self):
+        """Initialize visualization engine with view persistence"""
+        class VisualizationEngine:
+            views = ["2d", "3d", "section"]
+            
+            def __init__(self):
+                self.view_cache = {}
+            
+            def get_view(self, view_type: str, elements: List[str]):
+                cache_key = f"{view_type}-{'-'.join(elements)}"
+                if cache_key not in self.view_cache:
+                    self.view_cache[cache_key] = (
+                        f"https://cad-visualization.example.com/"
+                        f"{view_type}?elements={','.join(elements)}"
+                    )
+                return self.view_cache[cache_key]
+        
+        return VisualizationEngine()
+
+    def _create_prompt(self) -> ChatPromptTemplate:
+        return ChatPromptTemplate.from_template("""
+        As CAD Agent for Company GmbH, translate design instructions into CAD operations.
+        
+        Task: {task}
+        Current Model: {current_state}
+        Constraints: {constraints}
+        
+        Generate JSON with:
+        - operations: List of CAD operations
+        - visualization_needs: Required views
+        - parameters: Technical specs
+        
+        Format:
+        ```json
+        {{
+            "reasoning": "...",
+            "operations": [
+                {{
+                    "type": "create|modify|delete",
+                    "element": "element_type",
+                    "params": {{...}},
+                    "expected": "..."
+                }}
+            ],
+            "visualization": {{
+                "views": ["2d", "3d", "section"],
+                "focus_elements": ["element_id"]
+            }},
+            "status": "complete|partial"
+        }}
+        ```
+        """)
+
     def process(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Process the current state and perform CAD operations.
+        """Process CAD tasks and generate visualizations"""
+        state = state.copy()
+        cad_state = state.setdefault("cad_model_state", {})
+        tasks = cad_state.get("tasks", [])
         
-        Args:
-            state: The current workflow state
-            
-        Returns:
-            Updated workflow state
-        """
-        # Extract the CAD task from the state
-        cad_tasks = state["cad_model_state"].get("tasks", [])
-        if not cad_tasks:
-            state["errors"].append("No CAD tasks found for CAD Agent")
+        # Initialize visualization structure if missing
+        cad_state.setdefault("visualization", {
+            "views": {},
+            "operations": [],
+            "latest_view": None
+        })
+        
+        if not tasks:
+            state["errors"].append("No CAD tasks provided")
             return state
-        
-        # Process the most recent task
-        current_task = cad_tasks[-1]
-        
-        # Get design constraints from the design state
-        design_constraints = state["design_state"].get("constraints", {})
-        
-        # Process with the LLM
-        response = self.chain.invoke({
-            "task": current_task,
-            "cad_model_state": json.dumps(state["cad_model_state"]),
-            "design_constraints": json.dumps(design_constraints)
-        })
-        
-        # Extract the JSON response
-        response_content = response.content
-        json_start = response_content.find('```json') + 7
-        json_end = response_content.find('```', json_start)
-        json_str = response_content[json_start:json_end].strip()
-        
+
         try:
-            cad_response = json.loads(json_str)
-        except json.JSONDecodeError:
-            # Fallback if JSON parsing fails
-            cad_response = {
-                "reasoning": "Failed to parse JSON response",
+            # Process latest task
+            task = tasks.pop()
+            response = self.chain.invoke({
+                "task": task,
+                "current_state": json.dumps(cad_state),
+                "constraints": json.dumps(state["design_state"].get("constraints", {}))
+            })
+            
+            # Parse response
+            operations = self._parse_response(response.content)
+            
+            # Execute operations
+            results = []
+            visualization_data = cad_state["visualization"]
+            
+            for op in operations["operations"]:
+                result = self.connector.execute(op)
+                results.append(result)
+                
+                # Store visualization
+                view_url = result["visualization"]
+                visualization_data["views"][op["type"]] = view_url
+                visualization_data["latest_view"] = view_url
+                visualization_data["operations"].append(result["operation"])
+
+            # Generate requested views
+            for view_type in operations.get("visualization", {}).get("views", []):
+                visualization_data["views"][view_type] = self.visualizer.get_view(
+                    view_type, 
+                    operations["visualization"]["focus_elements"]
+                )
+
+            # Update status
+            cad_state["status"] = operations["status"]
+            cad_state["tasks"] = tasks
+
+            # Add visualization message
+            state["messages"].append({
+                "role": "cad_agent",
+                "content": {
+                    "text": operations["reasoning"],
+                    "visualizations": [
+                        {"type": t, "url": u} 
+                        for t, u in visualization_data["views"].items()
+                    ],
+                    "primary_view": visualization_data["latest_view"]
+                }
+            })
+
+        except Exception as e:
+            state["errors"].append(f"CAD Error: {str(e)}")
+            cad_state["status"] = "error"
+
+        state["next_agent"] = "coordinator"
+        return state
+
+    def _parse_response(self, response: str) -> Dict[str, Any]:
+        """Robust JSON parsing with validation"""
+        try:
+            # Extract JSON block
+            json_str = response.split("```json")[1].split("```")[0].strip()
+            data = json.loads(json_str)
+            
+            # Validate required fields
+            if not all(key in data for key in ["operations", "status"]):
+                raise ValueError("Missing required fields in CAD response")
+                
+            return data
+            
+        except (IndexError, json.JSONDecodeError, ValueError) as e:
+            error_msg = f"Invalid CAD response format: {str(e)}"
+            raise ValueError(error_msg) from e
+
+# Example usage
+if __name__ == "__main__":
+    agent = CADAgent()
+    sample_state = {
+        "cad_model_state": {
+            "tasks": ["Create a gear with 24 teeth"],
+            "elements": {"gears": []},
+            "visualization": {
+                "views": {},
                 "operations": [],
-                "completion_status": "failed",
-                "next_steps": "Error in CAD agent response"
+                "latest_view": None
             }
-            state["errors"].append("CAD agent produced invalid JSON response")
-        
-        # Execute CAD operations through Company connector
-        operation_results = []
-        for operation in cad_response["operations"]:
-            result = self.Company_connector.execute_operation(operation)
-            operation_results.append(result)
-        
-        # Update the state with the results
-        updated_state = state.copy()
-        updated_state["cad_model_state"] = {
-            **updated_state["cad_model_state"],
-            **self.Company_connector.get_current_state(),
-            "last_operations": operation_results,
-            "completion_status": cad_response["completion_status"]
+        },
+        "design_state": {
+            "constraints": {"material": "steel"}
         }
-        
-        # Remove the processed task
-        updated_state["cad_model_state"]["tasks"] = cad_tasks[:-1]
-        
-        # Add message to the state
-        updated_state["messages"].append({
-            "role": "cad_agent",
-            "content": f"CAD Operations: {cad_response['reasoning']}\n\nStatus: {cad_response['completion_status']}\n\nNext Steps: {cad_response['next_steps']}"
-        })
-        
-        # Set next agent back to coordinator
-        updated_state["next_agent"] = "coordinator_agent"
-        
-        return updated_state
+    }
+    
+    result = agent.process(sample_state)
+    print("Generated Visualization Data:")
+    print(json.dumps(result["cad_model_state"]["visualization"], indent=2))

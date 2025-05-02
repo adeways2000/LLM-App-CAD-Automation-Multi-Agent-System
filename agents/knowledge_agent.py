@@ -9,6 +9,7 @@ from typing import Dict, List, Any, TypedDict, Optional
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 import json
+from langchain.globals import get_verbose
 
 class KnowledgeAgent:
     """

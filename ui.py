@@ -116,38 +116,23 @@ def display_workflow_status():
     """Display the current workflow status in the sidebar."""
     st.sidebar.header("Workflow Dashboard")
     
-    # CAD Model Status
-    cad_state = st.session_state.workflow_state.get("cad_model_state", {})
-    st.sidebar.subheader("CAD Model Status")
-    st.sidebar.metric(
-        "Elements", 
-        len(cad_state.get("elements", {})),  # Safe access
-        help="Number of CAD elements in the model"
-    )
-    st.sidebar.metric(
-        "Parameters", 
-        len(cad_state.get("parameters", {}))
-    )
+    # Status indicators
+    stage = st.session_state.workflow_state["current_stage"]
+    status_color = {
+        "initial": "gray",
+        "processing": "blue",
+        "completed": "green",
+        "error": "red"
+    }.get(stage, "gray")
     
-    # Design Status
-    design_state = st.session_state.workflow_state.get("design_state", {})
-    st.sidebar.subheader("Design Status")
-    st.sidebar.metric(
-        "Requirements", 
-        len(design_state.get("requirements", {}))
-    )
-    st.sidebar.metric(
-        "Constraints", 
-        len(design_state.get("constraints", {}))
-    )
+    st.sidebar.markdown(f"**Current Stage:** <span style='color:{status_color}'>➤ {stage.capitalize()}</span>", 
+                       unsafe_allow_html=True)
     
-    # Analysis Status
-    analysis_state = st.session_state.workflow_state.get("analysis_state", {})
-    st.sidebar.subheader("Analysis Status")
-    st.sidebar.metric(
-        "Completed Analyses", 
-        len(analysis_state.get("results", {}))
-    )
+    # Display error if any
+    if st.session_state.workflow_state["errors"]:
+        st.sidebar.error("## Errors")
+        for error in st.session_state.workflow_state["errors"]:
+            st.sidebar.error(f"- {error}")
 
 def display_example_prompts():
     """Display example prompts that users can try."""

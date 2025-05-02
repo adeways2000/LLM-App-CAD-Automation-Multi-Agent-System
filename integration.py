@@ -10,6 +10,7 @@ import dotenv
 import sys
 import json
 from typing import Dict, List, Any, Optional, Union
+from langchain.globals import get_verbose
 
 from pydantic import BaseSettings, SecretStr
 

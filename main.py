@@ -83,7 +83,7 @@ class CADAutomationApp:
 
         # Configure edges
         workflow.add_conditional_edges(
-            source="coordinator",
+                source="coordinator",
             path=route_to_agent,
             path_map={
                 "cad_agent": "cad_agent",
